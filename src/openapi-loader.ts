@@ -219,7 +219,7 @@ export class OpenAPISpecLoader {
         // Copy other properties from the first schema that has them
         for (const [key, value] of Object.entries(inlinedSubSchema)) {
           if (key !== "properties" && key !== "required" && !(key in mergedSchema)) {
-            ;(mergedSchema as any)[key] = value
+            ;(mergedSchema as Record<string, unknown>)[key] = value
           }
         }
       }
@@ -451,7 +451,7 @@ export class OpenAPISpecLoader {
         }
 
         // Store the original path for API client use (backward compatibility)
-        ;(tool as any)["x-original-path"] = path
+        ;(tool as ExtendedTool & Record<string, unknown>)["x-original-path"] = path
 
         // Gather all required property names
         const requiredParams: string[] = []
@@ -517,7 +517,7 @@ export class OpenAPISpecLoader {
             )
 
             // Create the parameter definition
-            const paramDef: any = {
+            const paramDef: Record<string, unknown> = {
               description: paramObj.description || `${paramObj.name} parameter`,
               "x-parameter-location": paramObj.in, // Store parameter location (path, query, etc.)
             }
@@ -580,12 +580,12 @@ export class OpenAPISpecLoader {
               if (hasExistingProperties) {
                 // If we already have properties from parameters, we need to create an allOf
                 // that combines the existing object schema with the oneOf/anyOf
-                const objectSchema: any = {
-                  type: "object",
+                const objectSchema = {
+                  type: "object" as const,
                   properties: existingProperties,
                 }
                 if (tool.inputSchema.required) {
-                  objectSchema.required = tool.inputSchema.required
+                  ;(objectSchema as any).required = tool.inputSchema.required
                 }
 
                 tool.inputSchema = {

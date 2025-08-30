@@ -84,7 +84,7 @@ export class ApiClient {
    * @param params - Parameters for the API call
    * @returns The API response data
    */
-  async executeApiCall(toolId: string, params: Record<string, any>): Promise<any> {
+  async executeApiCall(toolId: string, params: Record<string, unknown>): Promise<unknown> {
     return this.executeApiCallWithRetry(toolId, params, false)
   }
 
@@ -98,13 +98,13 @@ export class ApiClient {
    */
   private async executeApiCallWithRetry(
     toolId: string,
-    params: Record<string, any>,
+    params: Record<string, unknown>,
     isRetry: boolean,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       // Handle dynamic meta-tools that don't follow the standard HTTP method::path format
       if (toolId === "LIST-API-ENDPOINTS") {
-        return await this.handleListApiEndpoints()
+        return this.handleListApiEndpoints()
       }
 
       if (toolId === "GET-API-ENDPOINT-SCHEMA") {
@@ -192,7 +192,7 @@ export class ApiClient {
 
       // Get fresh authentication headers
       const authHeaders = this.authProvider.getAuthHeaders() // Prepare request configuration
-      const config: any = {
+      const config: Record<string, unknown> = {
         method: method.toLowerCase(),
         url: resolvedPath,
         headers: authHeaders,
@@ -255,15 +255,22 @@ export class ApiClient {
    * @returns Processed parameters
    */
   private processQueryParams(
-    params: Record<string, any>,
+    params: Record<string, unknown>,
   ): Record<string, string | number | boolean> {
     const result: Record<string, string | number | boolean> = {}
 
     for (const [key, value] of Object.entries(params)) {
       if (Array.isArray(value)) {
         result[key] = value.join(",")
-      } else {
+      } else if (
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+      ) {
         result[key] = value
+      } else {
+        // Convert other types to string
+        result[key] = String(value)
       }
     }
 
@@ -274,8 +281,8 @@ export class ApiClient {
    * Handle the LIST-API-ENDPOINTS meta-tool
    * Returns a list of all available API endpoints from the loaded tools
    */
-  private handleListApiEndpoints(): any {
-    const endpoints: any[] = []
+  private handleListApiEndpoints(): Record<string, unknown> {
+    const endpoints: Record<string, unknown>[] = []
 
     // If we have the OpenAPI spec, use it to get all available endpoints
     if (this.openApiSpec) {
@@ -342,10 +349,13 @@ export class ApiClient {
    * Handle the GET-API-ENDPOINT-SCHEMA meta-tool
    * Returns the JSON schema for a specified API endpoint
    */
-  private handleGetApiEndpointSchema(toolId: string, params: Record<string, any>): any {
+  private handleGetApiEndpointSchema(
+    toolId: string,
+    params: Record<string, unknown>,
+  ): Record<string, unknown> {
     const { endpoint } = params
 
-    if (!endpoint) {
+    if (!endpoint || typeof endpoint !== "string") {
       throw new Error(`Missing required parameter 'endpoint' for tool '${toolId}'`)
     }
 
@@ -356,7 +366,7 @@ export class ApiClient {
         throw new Error(`No endpoint found for path '${endpoint}' in tool '${toolId}'`)
       }
 
-      const operations: any[] = []
+      const operations: Record<string, unknown>[] = []
       for (const [method, operation] of Object.entries(pathItem)) {
         if (method === "parameters" || !operation) continue
 
@@ -424,27 +434,36 @@ export class ApiClient {
    * Handle the INVOKE-API-ENDPOINT meta-tool
    * Dynamically invokes an API endpoint with the provided parameters
    */
-  private async handleInvokeApiEndpoint(toolId: string, params: Record<string, any>): Promise<any> {
+  private async handleInvokeApiEndpoint(
+    toolId: string,
+    params: Record<string, unknown>,
+  ): Promise<unknown> {
     const { endpoint, method, params: endpointParams = {} } = params
 
-    if (!endpoint) {
+    if (!endpoint || typeof endpoint !== "string") {
       throw new Error(`Missing required parameter 'endpoint' for tool '${toolId}'`)
     }
 
+    // Ensure endpointParams is an object
+    const safeEndpointParams =
+      endpointParams && typeof endpointParams === "object" && !Array.isArray(endpointParams)
+        ? (endpointParams as Record<string, unknown>)
+        : {}
+
     // If method is specified, construct the tool ID directly
-    if (method) {
+    if (method && typeof method === "string") {
       const toolId = generateToolId(method, endpoint)
 
       // Check if this tool exists in our toolsMap or if we can derive it from the OpenAPI spec
       if (this.toolsMap.has(toolId)) {
-        return this.executeApiCall(toolId, endpointParams)
+        return this.executeApiCall(toolId, safeEndpointParams)
       } else if (this.openApiSpec) {
         // Check if the endpoint and method exist in the OpenAPI spec
         const pathItem = this.openApiSpec.paths[endpoint]
         if (pathItem && (pathItem as any)[method.toLowerCase()]) {
           // Make the HTTP request directly since we have the spec but not the tool
           const { method: httpMethod, path } = { method: method.toUpperCase(), path: endpoint }
-          return this.makeDirectHttpRequest(httpMethod, path, endpointParams)
+          return this.makeDirectHttpRequest(httpMethod, path, safeEndpointParams)
         } else {
           throw new Error(
             `No endpoint found for path '${endpoint}' with method '${method}' in tool '${toolId}'`,
@@ -462,7 +481,7 @@ export class ApiClient {
         // Find the first available HTTP method for this path
         for (const method of VALID_HTTP_METHODS) {
           if ((pathItem as any)[method]) {
-            return this.makeDirectHttpRequest(method.toUpperCase(), endpoint, endpointParams)
+            return this.makeDirectHttpRequest(method.toUpperCase(), endpoint, safeEndpointParams)
           }
         }
         throw new Error(`No HTTP operations found for endpoint '${endpoint}' in tool '${toolId}'`)
@@ -482,13 +501,13 @@ export class ApiClient {
   private async makeDirectHttpRequest(
     method: string,
     path: string,
-    params: Record<string, any>,
-  ): Promise<any> {
+    params: Record<string, unknown>,
+  ): Promise<unknown> {
     // Get fresh authentication headers
     const authHeaders = this.authProvider.getAuthHeaders()
 
     // Prepare request configuration
-    const config: any = {
+    const config: Record<string, unknown> = {
       method: method.toLowerCase(),
       url: path,
       headers: authHeaders,
