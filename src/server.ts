@@ -47,7 +47,7 @@ export class OpenAPIServer {
     // Handle tool listing
     this.server.setRequestHandler(ListToolsRequestSchema, () => {
       return {
-        tools: this.toolsManager.getAllTools() as any,
+        tools: this.toolsManager.getAllTools(),
       }
     })
 
@@ -79,7 +79,7 @@ export class OpenAPIServer {
 
       try {
         // Execute the API call
-        const result = await this.apiClient.executeApiCall(toolId, params || {})
+        const result: unknown = await this.apiClient.executeApiCall(toolId, params || {})
 
         return {
           content: [

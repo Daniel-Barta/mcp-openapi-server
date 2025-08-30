@@ -352,7 +352,7 @@ export class StreamableHttpServerTransport implements Transport {
     let body = ""
     let size = 0
 
-    req.on("data", (chunk) => {
+    req.on("data", (chunk: Buffer) => {
       size += chunk.length
       if (size > this.maxBodySize) {
         res.writeHead(413)

@@ -322,7 +322,7 @@ export class ApiClient {
             method: method.toUpperCase(),
             path,
           })
-        } catch (_error) {
+        } catch {
           // Skip tools that don't follow the standard format
           continue
         }
@@ -400,7 +400,7 @@ export class ApiClient {
             matchingToolId = toolId
             break
           }
-        } catch (_error) {
+        } catch {
           // Skip tools that don't follow the standard format
           continue
         }
