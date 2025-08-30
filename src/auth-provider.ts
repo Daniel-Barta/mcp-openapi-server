@@ -44,7 +44,7 @@ export class StaticAuthProvider implements AuthProvider {
     return { ...this.headers }
   }
 
-  handleAuthError(): boolean {
+  handleAuthError(_error: AxiosError): boolean {
     // Static auth provider cannot handle auth errors
     return false
   }

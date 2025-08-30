@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosError } from "axios"
+import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from "axios"
 import { Tool } from "@modelcontextprotocol/sdk/types.js"
 import { AuthProvider, StaticAuthProvider, isAuthError } from "./auth-provider.js"
 import { parseToolId as parseToolIdUtil, generateToolId } from "./utils/tool-id.js"
@@ -47,6 +47,25 @@ export class ApiClient {
     }
 
     this.specLoader = specLoader
+  }
+
+  /**
+   * Internal helper to execute an axios request that supports both
+   * callable axios instances and instances with a .request method.
+   */
+  private async sendRequest(config: AxiosRequestConfig): Promise<any> {
+    const axiosAny = this.axiosInstance as unknown as {
+      request?: (cfg: AxiosRequestConfig) => Promise<any>
+    } & ((cfg: AxiosRequestConfig) => Promise<any>)
+
+    // Prefer the .request method when present; fall back to callable instance
+    if (typeof (axiosAny as any).request === "function") {
+      return (axiosAny as any).request(config)
+    }
+    if (typeof axiosAny === "function") {
+      return (axiosAny as any)(config)
+    }
+    throw new Error("Axios instance is neither callable nor has a request method")
   }
 
   /**
@@ -122,7 +141,7 @@ export class ApiClient {
       const toolDef = this.getToolDefinition(toolId)
 
       // Interpolate path parameters into the URL and remove them from params
-      const paramsCopy: Record<string, any> = { ...params }
+      const paramsCopy: Record<string, unknown> = { ...params }
       let resolvedPath = path
 
       // Helper function to escape regex special characters
@@ -135,9 +154,10 @@ export class ApiClient {
         // Check each parameter to see if it's a path parameter
         for (const [key, value] of Object.entries(paramsCopy)) {
           const paramDef = toolDef.inputSchema.properties[key]
-          // Get the parameter location from the extended schema
-          const paramDef_any = paramDef as any
-          const paramLocation = paramDef_any?.["x-parameter-location"]
+          // Get the parameter location from the extended schema in a type-safe way
+          const paramLocation = (paramDef as { [k: string]: unknown } | undefined)?.[
+            "x-parameter-location"
+          ] as string | undefined
 
           // If it's a path parameter, interpolate it into the URL and remove from params
           if (paramLocation === "path") {
@@ -153,11 +173,14 @@ export class ApiClient {
             if (paramRegex.test(resolvedPath)) {
               resolvedPath = resolvedPath.replace(
                 paramRegex,
-                (match) => encodeURIComponent(value) + (match.endsWith("/") ? "/" : ""),
+                (match) => encodeURIComponent(String(value)) + (match.endsWith("/") ? "/" : ""),
               )
             } else {
               // Fall back to the original simple replacement for backward compatibility
-              resolvedPath = resolvedPath.replace(`/${key}`, `/${encodeURIComponent(value)}`)
+              resolvedPath = resolvedPath.replace(
+                `/${key}`,
+                `/${encodeURIComponent(String(value))}`,
+              )
             }
             delete paramsCopy[key]
           }
@@ -178,13 +201,13 @@ export class ApiClient {
           if (paramRegex.test(resolvedPath)) {
             resolvedPath = resolvedPath.replace(
               paramRegex,
-              (match) => encodeURIComponent(value) + (match.endsWith("/") ? "/" : ""),
+              (match) => encodeURIComponent(String(value)) + (match.endsWith("/") ? "/" : ""),
             )
             delete paramsCopy[key]
           }
           // Fall back to original simple replacement for backward compatibility
           else if (resolvedPath.includes(`/${key}`)) {
-            resolvedPath = resolvedPath.replace(`/${key}`, `/${encodeURIComponent(value)}`)
+            resolvedPath = resolvedPath.replace(`/${key}`, `/${encodeURIComponent(String(value))}`)
             delete paramsCopy[key]
           }
         }
@@ -192,7 +215,7 @@ export class ApiClient {
 
       // Get fresh authentication headers
       const authHeaders = this.authProvider.getAuthHeaders() // Prepare request configuration
-      const config: Record<string, unknown> = {
+      const config: AxiosRequestConfig = {
         method: method.toLowerCase(),
         url: resolvedPath,
         headers: authHeaders,
@@ -208,7 +231,7 @@ export class ApiClient {
       }
 
       // Execute the request
-      const response = await this.axiosInstance(config)
+      const response = await this.sendRequest(config)
       return response.data
     } catch (error) {
       // Handle errors
@@ -289,15 +312,9 @@ export class ApiClient {
       for (const [path, pathItem] of Object.entries(this.openApiSpec.paths)) {
         if (!pathItem) continue
 
-        for (const [method, operation] of Object.entries(pathItem)) {
-          if (method === "parameters" || !operation) continue
-
-          // Skip invalid HTTP methods
-          if (!isValidHttpMethod(method)) {
-            continue
-          }
-
-          const op = operation as any
+        for (const method of VALID_HTTP_METHODS) {
+          const op = pathItem[method]
+          if (!op) continue
           endpoints.push({
             method: method.toUpperCase(),
             path,
@@ -367,15 +384,9 @@ export class ApiClient {
       }
 
       const operations: Record<string, unknown>[] = []
-      for (const [method, operation] of Object.entries(pathItem)) {
-        if (method === "parameters" || !operation) continue
-
-        // Skip invalid HTTP methods
-        if (!isValidHttpMethod(method)) {
-          continue
-        }
-
-        const op = operation as any
+      for (const method of VALID_HTTP_METHODS) {
+        const op = pathItem[method]
+        if (!op) continue
         operations.push({
           method: method.toUpperCase(),
           operationId: op.operationId || "",
@@ -460,11 +471,15 @@ export class ApiClient {
       } else if (this.openApiSpec) {
         // Check if the endpoint and method exist in the OpenAPI spec
         const pathItem = this.openApiSpec.paths[endpoint]
-        if (pathItem && (pathItem as any)[method.toLowerCase()]) {
-          // Make the HTTP request directly since we have the spec but not the tool
-          const { method: httpMethod, path } = { method: method.toUpperCase(), path: endpoint }
-          return this.makeDirectHttpRequest(httpMethod, path, safeEndpointParams)
-        } else {
+        if (pathItem) {
+          const lower = method.toLowerCase()
+          if (isValidHttpMethod(lower) && pathItem[lower]) {
+            // Make the HTTP request directly since we have the spec but not the tool
+            const { method: httpMethod, path } = { method: method.toUpperCase(), path: endpoint }
+            return this.makeDirectHttpRequest(httpMethod, path, safeEndpointParams)
+          }
+        }
+        {
           throw new Error(
             `No endpoint found for path '${endpoint}' with method '${method}' in tool '${toolId}'`,
           )
@@ -480,7 +495,7 @@ export class ApiClient {
       if (pathItem) {
         // Find the first available HTTP method for this path
         for (const method of VALID_HTTP_METHODS) {
-          if ((pathItem as any)[method]) {
+          if (pathItem[method]) {
             return this.makeDirectHttpRequest(method.toUpperCase(), endpoint, safeEndpointParams)
           }
         }
@@ -507,8 +522,8 @@ export class ApiClient {
     const authHeaders = this.authProvider.getAuthHeaders()
 
     // Prepare request configuration
-    const config: Record<string, unknown> = {
-      method: method.toLowerCase(),
+    const config: AxiosRequestConfig = {
+      method: method.toLowerCase() as AxiosRequestConfig["method"],
       url: path,
       headers: authHeaders,
     }
@@ -524,7 +539,7 @@ export class ApiClient {
 
     try {
       // Execute the request
-      const response = await this.axiosInstance.request(config)
+      const response = await this.sendRequest(config)
       return response.data
     } catch (error) {
       if (axios.isAxiosError(error)) {

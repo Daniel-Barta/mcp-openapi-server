@@ -149,38 +149,38 @@ describe("AuthProvider", () => {
   })
 
   describe("StaticAuthProvider", () => {
-    it("should return provided headers", async () => {
+  it("should return provided headers", async () => {
       const headers = { Authorization: "Bearer token123", "X-API-Key": "key456" }
       const provider = new StaticAuthProvider(headers)
 
-      const result = await provider.getAuthHeaders()
+  const result = provider.getAuthHeaders()
       expect(result).toEqual(headers)
     })
 
-    it("should return empty object when no headers provided", async () => {
+  it("should return empty object when no headers provided", async () => {
       const provider = new StaticAuthProvider()
 
-      const result = await provider.getAuthHeaders()
+  const result = provider.getAuthHeaders()
       expect(result).toEqual({})
     })
 
-    it("should return copy of headers (not reference)", async () => {
+  it("should return copy of headers (not reference)", async () => {
       const headers = { Authorization: "Bearer token123" }
       const provider = new StaticAuthProvider(headers)
 
-      const result = await provider.getAuthHeaders()
+  const result = provider.getAuthHeaders()
       result["X-Modified"] = "test"
 
-      const result2 = await provider.getAuthHeaders()
+  const result2 = provider.getAuthHeaders()
       expect(result2).toEqual(headers)
       expect(result2).not.toHaveProperty("X-Modified")
     })
 
-    it("should always return false for handleAuthError", async () => {
+  it("should always return false for handleAuthError", async () => {
       const provider = new StaticAuthProvider()
       const error = { response: { status: 401 } } as AxiosError
 
-      const result = await provider.handleAuthError(error)
+  const result = provider.handleAuthError(error)
       expect(result).toBe(false)
     })
 
@@ -194,12 +194,12 @@ describe("AuthProvider", () => {
         expect(provider).toBeInstanceOf(StaticAuthProvider)
       })
 
-      it("should handle null headers gracefully in getAuthHeaders", async () => {
+  it("should handle null headers gracefully in getAuthHeaders", async () => {
         const provider = new StaticAuthProvider(null as unknown as Record<string, string>)
 
         // Should handle null gracefully and return empty object or throw meaningful error
         await expect(async () => {
-          const result = await provider.getAuthHeaders()
+          const result = provider.getAuthHeaders()
           // If it doesn't throw, it should return an object (likely empty)
           expect(typeof result).toBe("object")
           expect(result).not.toBeNull()
@@ -211,10 +211,10 @@ describe("AuthProvider", () => {
         expect(provider).toBeInstanceOf(StaticAuthProvider)
       })
 
-      it("should handle undefined headers gracefully in getAuthHeaders", async () => {
+  it("should handle undefined headers gracefully in getAuthHeaders", async () => {
         const provider = new StaticAuthProvider(undefined as unknown as Record<string, string>)
 
-        const result = await provider.getAuthHeaders()
+  const result = provider.getAuthHeaders()
         expect(typeof result).toBe("object")
         expect(result).not.toBeNull()
       })
@@ -233,14 +233,14 @@ describe("AuthProvider", () => {
         expect(booleanProvider).toBeInstanceOf(StaticAuthProvider)
       })
 
-      it("should handle non-object headers gracefully in getAuthHeaders", async () => {
+  it("should handle non-object headers gracefully in getAuthHeaders", async () => {
         const stringProvider = new StaticAuthProvider(
           "not an object" as unknown as Record<string, string>,
         )
 
         // Should either throw a meaningful error or handle gracefully
         await expect(async () => {
-          const result = await stringProvider.getAuthHeaders()
+          const result = stringProvider.getAuthHeaders()
           expect(typeof result).toBe("object")
         }).not.toThrow()
       })
@@ -268,14 +268,14 @@ describe("AuthProvider", () => {
         // At minimum, it should not crash
       })
 
-      it("should handle empty object as headers", async () => {
+  it("should handle empty object as headers", async () => {
         const provider = new StaticAuthProvider({})
 
-        const result = await provider.getAuthHeaders()
+  const result = provider.getAuthHeaders()
         expect(result).toEqual({})
       })
 
-      it("should handle headers with special characters and unicode", async () => {
+  it("should handle headers with special characters and unicode", async () => {
         const headersWithSpecialChars = {
           "X-Special-Chars": "!@#$%^&*()_+-=[]{}|;':\",./<>?",
           "X-Unicode": "🚀 Hello 世界 café naïve résumé",
@@ -285,7 +285,7 @@ describe("AuthProvider", () => {
 
         const provider = new StaticAuthProvider(headersWithSpecialChars)
 
-        const result = await provider.getAuthHeaders()
+  const result = provider.getAuthHeaders()
         expect(result).toEqual(headersWithSpecialChars)
       })
     })
@@ -296,7 +296,7 @@ describe("AuthProvider", () => {
       private isValid = true
       private retryCount = 0
 
-      async getAuthHeaders(): Promise<Record<string, string>> {
+  getAuthHeaders(): Record<string, string> {
         if (!this.isValid) {
           throw new Error("Token expired")
         }
@@ -304,7 +304,7 @@ describe("AuthProvider", () => {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      async handleAuthError(_error: AxiosError): Promise<boolean> {
+  handleAuthError(_error: AxiosError): boolean {
         this.retryCount++
         if (this.retryCount === 1) {
           // First auth error - refresh token and retry
@@ -328,7 +328,7 @@ describe("AuthProvider", () => {
     it("should provide valid headers when token is valid", async () => {
       const provider = new MockAuthProvider()
 
-      const headers = await provider.getAuthHeaders()
+      const headers = provider.getAuthHeaders()
       expect(headers).toEqual({ Authorization: "Bearer valid-token" })
     })
 
@@ -336,7 +336,7 @@ describe("AuthProvider", () => {
       const provider = new MockAuthProvider()
       provider.expireToken()
 
-      await expect(provider.getAuthHeaders()).rejects.toThrow("Token expired")
+      expect(() => provider.getAuthHeaders()).toThrow("Token expired")
     })
 
     it("should handle auth errors with retry logic", async () => {
@@ -344,12 +344,12 @@ describe("AuthProvider", () => {
       const error = { response: { status: 401 } } as AxiosError
 
       // First call should return true (retry)
-      const shouldRetry1 = await provider.handleAuthError(error)
+      const shouldRetry1 = provider.handleAuthError(error)
       expect(shouldRetry1).toBe(true)
       expect(provider.getRetryCount()).toBe(1)
 
       // Second call should return false (don't retry)
-      const shouldRetry2 = await provider.handleAuthError(error)
+      const shouldRetry2 = provider.handleAuthError(error)
       expect(shouldRetry2).toBe(false)
       expect(provider.getRetryCount()).toBe(2)
     })

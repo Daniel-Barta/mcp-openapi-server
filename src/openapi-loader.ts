@@ -580,20 +580,25 @@ export class OpenAPISpecLoader {
               if (hasExistingProperties) {
                 // If we already have properties from parameters, we need to create an allOf
                 // that combines the existing object schema with the oneOf/anyOf
-                const objectSchema = {
-                  type: "object" as const,
-                  properties: existingProperties,
+                const objectSchema: {
+                  type: "object"
+                  properties: Record<string, unknown>
+                  required?: string[]
+                } = {
+                  type: "object",
+                  properties: existingProperties as Record<string, unknown>,
                 }
                 if (tool.inputSchema.required) {
-                  ;(objectSchema as any).required = tool.inputSchema.required
+                  objectSchema.required = tool.inputSchema.required
                 }
 
+                // The Tool inputSchema type is object-like; we intentionally broaden it here to support allOf
                 tool.inputSchema = {
                   allOf: [objectSchema, inlinedSchema],
-                } as any
+                } as unknown as typeof tool.inputSchema
               } else {
                 // No existing properties, so we can use the oneOf/anyOf directly
-                tool.inputSchema = inlinedSchema as any
+                tool.inputSchema = inlinedSchema as unknown as typeof tool.inputSchema
               }
             } else if (inlinedSchema.type === "object" && inlinedSchema.properties) {
               // Handle object properties

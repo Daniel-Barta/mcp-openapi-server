@@ -54,7 +54,10 @@ describe("ApiClient Dynamic Meta-Tools", () => {
 
       apiClient.setOpenApiSpec(openApiSpec)
 
-      const result = await apiClient.executeApiCall("LIST-API-ENDPOINTS", {})
+      const result = (await apiClient.executeApiCall(
+        "LIST-API-ENDPOINTS",
+        {},
+      )) as any
 
       expect(result).toEqual({
         endpoints: [
@@ -115,7 +118,7 @@ describe("ApiClient Dynamic Meta-Tools", () => {
 
       apiClient.setTools(tools)
 
-      const result = await apiClient.executeApiCall("LIST-API-ENDPOINTS", {})
+  const result = (await apiClient.executeApiCall("LIST-API-ENDPOINTS", {})) as any
 
       expect(result.endpoints).toHaveLength(2)
       expect(result.note).toContain("Limited endpoint information")
@@ -147,9 +150,9 @@ describe("ApiClient Dynamic Meta-Tools", () => {
 
       apiClient.setOpenApiSpec(openApiSpec as any)
 
-      const result = await apiClient.executeApiCall("GET-API-ENDPOINT-SCHEMA", {
+      const result = (await apiClient.executeApiCall("GET-API-ENDPOINT-SCHEMA", {
         endpoint: "/users",
-      })
+      })) as any
 
       expect(result.path).toBe("/users")
       expect(result.operations).toHaveLength(1)
