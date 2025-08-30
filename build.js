@@ -1,4 +1,5 @@
 import * as esbuild from "esbuild"
+import { chmod } from "fs/promises"
 
 console.log("Building OpenAPI MCP Server...")
 
@@ -45,3 +46,10 @@ await esbuild.build({
 })
 
 console.log("✅ Build complete!")
+
+// Ensure the CLI wrapper is executable on POSIX systems; no-op on Windows
+try {
+  await chmod("./bin/mcp-server.js", 0o755)
+} catch (err) {
+  console.warn("Warning: failed to set executable bit on bin/mcp-server.js:", err?.message ?? err)
+}
