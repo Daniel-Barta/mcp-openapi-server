@@ -211,6 +211,7 @@ export class StreamableHttpServerTransport implements Transport {
         `StreamableHttpServerTransport: No active GET connections for session ${targetSessionId} to send message (ID: ${messageIdForThisResponse}). Message might not be delivered if not handled by POST.`,
       )
     }
+    return Promise.resolve()
   }
 
   /**

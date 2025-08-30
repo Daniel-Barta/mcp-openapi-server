@@ -68,7 +68,7 @@ export class OpenAPISpecLoader {
           specContent = inlineContent
           break
         default:
-          throw new Error(`Unsupported input method: ${inputMethod}`)
+          throw new Error(`Unsupported input method: ${String(inputMethod)}`)
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -110,7 +110,7 @@ export class OpenAPISpecLoader {
 
       // Handle data chunks
       process.stdin.on("data", (chunk) => {
-        data += chunk
+        data += chunk.toString()
       })
 
       // Handle end of input

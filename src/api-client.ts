@@ -191,9 +191,7 @@ export class ApiClient {
       }
 
       // Get fresh authentication headers
-      const authHeaders = await this.authProvider.getAuthHeaders()
-
-      // Prepare request configuration
+      const authHeaders = this.authProvider.getAuthHeaders() // Prepare request configuration
       const config: any = {
         method: method.toLowerCase(),
         url: resolvedPath,
@@ -219,7 +217,7 @@ export class ApiClient {
 
         // Check if it's an authentication error and we haven't already retried
         if (!isRetry && isAuthError(axiosError)) {
-          const shouldRetry = await this.authProvider.handleAuthError(axiosError)
+          const shouldRetry = this.authProvider.handleAuthError(axiosError)
           if (shouldRetry) {
             // Retry the request once
             return this.executeApiCallWithRetry(toolId, params, true)
@@ -230,11 +228,7 @@ export class ApiClient {
         throw new Error(
           `API request failed: ${axiosError.message}${
             axiosError.response
-              ? ` (${axiosError.response.status}: ${
-                  typeof axiosError.response.data === "object"
-                    ? JSON.stringify(axiosError.response.data)
-                    : axiosError.response.data
-                })`
+              ? ` (${axiosError.response.status}: ${String(axiosError.response.data)})`
               : ""
           }`,
         )
@@ -280,7 +274,7 @@ export class ApiClient {
    * Handle the LIST-API-ENDPOINTS meta-tool
    * Returns a list of all available API endpoints from the loaded tools
    */
-  private async handleListApiEndpoints(): Promise<any> {
+  private handleListApiEndpoints(): any {
     const endpoints: any[] = []
 
     // If we have the OpenAPI spec, use it to get all available endpoints
@@ -328,7 +322,7 @@ export class ApiClient {
             method: method.toUpperCase(),
             path,
           })
-        } catch (error) {
+        } catch (_error) {
           // Skip tools that don't follow the standard format
           continue
         }
@@ -406,7 +400,7 @@ export class ApiClient {
             matchingToolId = toolId
             break
           }
-        } catch (error) {
+        } catch (_error) {
           // Skip tools that don't follow the standard format
           continue
         }
@@ -491,7 +485,7 @@ export class ApiClient {
     params: Record<string, any>,
   ): Promise<any> {
     // Get fresh authentication headers
-    const authHeaders = await this.authProvider.getAuthHeaders()
+    const authHeaders = this.authProvider.getAuthHeaders()
 
     // Prepare request configuration
     const config: any = {
@@ -519,11 +513,7 @@ export class ApiClient {
         throw new Error(
           `API request failed: ${axiosError.message}${
             axiosError.response
-              ? ` (${axiosError.response.status}: ${
-                  typeof axiosError.response.data === "object"
-                    ? JSON.stringify(axiosError.response.data)
-                    : axiosError.response.data
-                })`
+              ? ` (${axiosError.response.status}: ${String(axiosError.response.data)})`
               : ""
           }`,
         )

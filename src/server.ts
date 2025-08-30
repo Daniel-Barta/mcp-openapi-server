@@ -45,7 +45,7 @@ export class OpenAPIServer {
    */
   private initializeHandlers(): void {
     // Handle tool listing
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    this.server.setRequestHandler(ListToolsRequestSchema, () => {
       return {
         tools: this.toolsManager.getAllTools() as any,
       }

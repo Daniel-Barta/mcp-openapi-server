@@ -11,7 +11,7 @@ export interface AuthProvider {
    * @returns Promise that resolves to headers object
    * @throws Error if authentication is not available (e.g., token expired)
    */
-  getAuthHeaders(): Promise<Record<string, string>>
+  getAuthHeaders(): Record<string, string>
 
   /**
    * Handle authentication errors from API responses
@@ -20,7 +20,7 @@ export interface AuthProvider {
    * @param error - The axios error from the failed request
    * @returns Promise that resolves to true if the request should be retried, false otherwise
    */
-  handleAuthError(error: AxiosError): Promise<boolean>
+  handleAuthError(error: AxiosError): boolean
 }
 
 /**
@@ -40,12 +40,11 @@ export function isAuthError(error: AxiosError): boolean {
 export class StaticAuthProvider implements AuthProvider {
   constructor(private headers: Record<string, string> = {}) {}
 
-  async getAuthHeaders(): Promise<Record<string, string>> {
+  getAuthHeaders(): Record<string, string> {
     return { ...this.headers }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async handleAuthError(_error: AxiosError): Promise<boolean> {
+  handleAuthError(_error: AxiosError): boolean {
     // Static auth provider cannot handle auth errors
     return false
   }
