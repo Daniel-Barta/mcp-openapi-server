@@ -201,11 +201,7 @@ export class OpenAPISpecLoader {
       }
 
       for (const subSchema of schemaObj.allOf) {
-        const inlinedSubSchema = this.inlineSchema(
-          subSchema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject,
-          components,
-          new Set(visited),
-        )
+        const inlinedSubSchema = this.inlineSchema(subSchema, components, new Set(visited))
 
         // Merge properties
         if (inlinedSubSchema.properties) {
@@ -239,11 +235,7 @@ export class OpenAPISpecLoader {
     if (schemaObj.oneOf) {
       // For oneOf, preserve the composition but inline nested schemas
       const inlinedOneOf = schemaObj.oneOf.map((subSchema) =>
-        this.inlineSchema(
-          subSchema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject,
-          components,
-          new Set(visited),
-        ),
+        this.inlineSchema(subSchema, components, new Set(visited)),
       )
 
       return {
@@ -255,11 +247,7 @@ export class OpenAPISpecLoader {
     if (schemaObj.anyOf) {
       // For anyOf, preserve the composition but inline nested schemas
       const inlinedAnyOf = schemaObj.anyOf.map((subSchema) =>
-        this.inlineSchema(
-          subSchema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject,
-          components,
-          new Set(visited),
-        ),
+        this.inlineSchema(subSchema, components, new Set(visited)),
       )
 
       return {
@@ -270,11 +258,7 @@ export class OpenAPISpecLoader {
 
     if (schemaObj.not) {
       // For not, inline the nested schema
-      const inlinedNot = this.inlineSchema(
-        schemaObj.not as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject,
-        components,
-        new Set(visited),
-      )
+      const inlinedNot = this.inlineSchema(schemaObj.not, components, new Set(visited))
 
       return {
         ...schemaObj,
@@ -286,22 +270,14 @@ export class OpenAPISpecLoader {
     if (schemaObj.type === "object" && schemaObj.properties) {
       const newProps: Record<string, OpenAPIV3.SchemaObject> = {}
       for (const [propName, propSchema] of Object.entries(schemaObj.properties)) {
-        newProps[propName] = this.inlineSchema(
-          propSchema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject,
-          components,
-          new Set(visited),
-        )
+        newProps[propName] = this.inlineSchema(propSchema, components, new Set(visited))
       }
       return { ...schemaObj, properties: newProps }
     }
 
     // Inline array schemas
     if (schemaObj.type === "array" && schemaObj.items) {
-      const inlinedItems = this.inlineSchema(
-        schemaObj.items as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject,
-        components,
-        new Set(visited),
-      )
+      const inlinedItems = this.inlineSchema(schemaObj.items, components, new Set(visited))
       return { ...schemaObj, items: inlinedItems }
     }
 
@@ -414,7 +390,7 @@ export class OpenAPISpecLoader {
               const resolvedParam = spec.components.parameters[paramNameFromRef]
 
               if (resolvedParam && "name" in resolvedParam && "in" in resolvedParam) {
-                paramObj = resolvedParam as OpenAPIV3.ParameterObject
+                paramObj = resolvedParam
               } else {
                 console.warn(
                   `Could not resolve path-level parameter reference or invalid structure: ${param.$ref}`,
@@ -426,7 +402,7 @@ export class OpenAPISpecLoader {
               continue
             }
           } else if ("name" in param && "in" in param) {
-            paramObj = param as OpenAPIV3.ParameterObject
+            paramObj = param
           } else {
             console.warn(
               "Skipping path-level parameter due to missing 'name' or 'in' properties and not being a valid $ref:",
@@ -502,7 +478,7 @@ export class OpenAPISpecLoader {
                 const resolvedParam = spec.components.parameters[paramNameFromRef]
 
                 if (resolvedParam && "name" in resolvedParam && "in" in resolvedParam) {
-                  paramObj = resolvedParam as OpenAPIV3.ParameterObject
+                  paramObj = resolvedParam
                 } else {
                   console.warn(
                     `Could not resolve parameter reference or invalid structure: ${param.$ref}`,
@@ -514,7 +490,7 @@ export class OpenAPISpecLoader {
                 continue
               }
             } else if ("name" in param && "in" in param) {
-              paramObj = param as OpenAPIV3.ParameterObject
+              paramObj = param
             } else {
               console.warn(
                 "Skipping parameter due to missing 'name' or 'in' properties and not being a valid $ref:",
@@ -535,7 +511,7 @@ export class OpenAPISpecLoader {
           if (paramObj.schema) {
             // Get the fully inlined schema with all nested references resolved
             const paramSchema = this.inlineSchema(
-              paramObj.schema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject,
+              paramObj.schema,
               spec.components?.schemas,
               new Set<string>(),
             )
@@ -573,7 +549,7 @@ export class OpenAPISpecLoader {
 
         // Merge requestBody schema into inputSchema
         if (op.requestBody && "content" in op.requestBody) {
-          const requestBodyObj = op.requestBody as OpenAPIV3.RequestBodyObject
+          const requestBodyObj = op.requestBody
 
           // Handle different content types
           let mediaTypeObj: OpenAPIV3.MediaTypeObject | undefined
@@ -589,7 +565,7 @@ export class OpenAPISpecLoader {
           if (mediaTypeObj?.schema) {
             // Handle schema inlining with proper types
             const inlinedSchema = this.inlineSchema(
-              mediaTypeObj.schema as OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject,
+              mediaTypeObj.schema,
               spec.components?.schemas,
               new Set<string>(),
             )
